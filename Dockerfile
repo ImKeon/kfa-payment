@@ -4,7 +4,6 @@ WORKDIR /app/
 
 COPY .env /
 COPY ./main.py /app/
-COPY ./certification-master.json /
 COPY ./requirements.txt /app/
 
 RUN pip install -r requirements.txt
