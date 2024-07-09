@@ -16,6 +16,12 @@ class PaymentBody(BaseModel):
     userName: str
 
 
+
+@app.get("/")
+async def healthCheck():
+    return {"status": 'true'}
+
+
 @app.post("/")
 async def root(paymentBody: PaymentBody):
     # URL 정의
