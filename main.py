@@ -80,4 +80,7 @@ async def root(paymentBody: PaymentBody):
 
         # Print the payurl
         print(payurl)
-        return {"payUrl": f'{payurl}'}
+        return {
+            "payUrl": f'{payurl}',
+            "orderno": f'{orderno}'
+        }
