@@ -15,6 +15,8 @@ app = FastAPI()
 
 RETURN_URL = 'https://payment.kfachallenge.info/pay_return'
 KFA_SERVER_URL = 'https://api.kfachallenge.info/api/v1/purchase/payment-complete'
+# RETURN_URL = 'https://222.237.25.210:8000/pay_return'
+# KFA_SERVER_URL = 'https://api.kfachallenge.info/api/v1/purchase/payment-complete'
 
 
 class PaymentBody(BaseModel):
