@@ -8,8 +8,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import urllib.parse
 import json
-
-import success_page
+from success_page import HTML_CONTENT
 
 app = FastAPI()
 
@@ -119,4 +118,4 @@ async def pay_return(request: Request):
 
 @app.get("/pay_return")
 async def pay_return_get(request: Request):
-    return HTMLResponse(content=success_page.HTML_CONTENT)
+    return HTMLResponse(content=HTML_CONTENT)
