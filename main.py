@@ -13,8 +13,11 @@ import success_page
 
 app = FastAPI()
 
+
 RETURN_URL = 'https://payment.kfachallenge.info/pay_return'
 KFA_SERVER_URL = 'https://api.kfachallenge.info/api/v1/purchase/payment-complete'
+THE_PAY_URL = 'https://messagepay.thepay.kr/thepay_if/ProcRequest.action'
+# THE_PAY_URL='https://dev-messagepay.thepay.kr:7080/thepay_if/ProcRequest.action'
 # RETURN_URL = 'https://222.237.25.210:8000/pay_return'
 # KFA_SERVER_URL = 'https://api.kfachallenge.info/api/v1/purchase/payment-complete'
 
@@ -36,7 +39,7 @@ async def healthCheck():
 @app.post("/")
 async def root(paymentBody: PaymentBody):
     # URL 정의
-    url = "https://dev-messagepay.thepay.kr:7080/thepay_if/ProcRequest.action"
+    url = THE_PAY_URL
 
     # Create the XML structure
     root = Element('root')
@@ -84,14 +87,13 @@ async def root(paymentBody: PaymentBody):
 
     # Print the response
     if (response.status_code == 200):
+        print(f'Response Is {response.text}')
         # Parse the response XML
         response_xml = fromstring(response.text)
 
         # Extract the payurl
         payurl = response_xml.find(".//data").attrib.get("payurl")
 
-        # Print the payurl
-        print(payurl)
         return {
             "payUrl": f'{payurl}',
             "orderno": f'{orderno}'
