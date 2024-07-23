@@ -111,8 +111,9 @@ async def pay_return(request: Request):
         print(f'Server Url : {KFA_SERVER_URL} Reqeust Body : {json_string}')
         headers = {'Content-Type': 'application/json'}
         response = requests.post(url, data=json_string, headers=headers)
-        response_data = response.json()
-        return response_data
+        print(f'Response Is {response.text}')
+        # response_data = response.json()
+        return response
     except Exception as e:
         print(f'Server Error IS {e}')
         print(f'Server Url : {KFA_SERVER_URL}')
