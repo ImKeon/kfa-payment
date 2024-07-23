@@ -115,6 +115,10 @@ async def pay_return(request: Request):
         return response_data
     except Exception as e:
         print(f'Server Error IS {e}')
+        print(f'Server Url : {KFA_SERVER_URL}')
+        body = await request.body()
+        body_query = body.decode("utf-8")
+        print(f'Reqeust Body : {body_query}')
         raise HTTPException(status_code=400, detail=str(e))
 
 
