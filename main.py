@@ -108,11 +108,13 @@ async def pay_return(request: Request):
         parsed_dict = {k: v[0] for k, v in parsed_dict.items()}
         json_string = json.dumps(parsed_dict, ensure_ascii=False, indent=4)
         url = f'{KFA_SERVER_URL}'
+        print(f'Server Url : {KFA_SERVER_URL} Reqeust Body : {json_string}')
         headers = {'Content-Type': 'application/json'}
         response = requests.post(url, data=json_string, headers=headers)
         response_data = response.json()
         return response_data
     except Exception as e:
+        print(f'Server Error IS {e}')
         raise HTTPException(status_code=400, detail=str(e))
 
 
