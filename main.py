@@ -15,12 +15,12 @@ app = FastAPI()
 
 # <Prod>
 RETURN_URL = 'https://payment.kfachallenge.info/pay_return'
-# KFA_SERVER_URL = 'https://api.kfachallenge.info/api/v1/purchase/payment-complete'
+KFA_SERVER_URL = 'https://api.kfachallenge.info/api/v1/purchase/payment-complete'
 THE_PAY_URL = 'https://messagepay.thepay.kr/thepay_if/ProcRequest.action'
 
 # <Dev>
 # RETURN_URL = 'https://222.237.25.210:8000/pay_return'
-KFA_SERVER_URL = 'http://222.237.25.210:8080/api/v1/purchase/payment-complete'
+# KFA_SERVER_URL = 'http://222.237.25.210:8080/api/v1/purchase/payment-complete'
 # THE_PAY_URL='https://dev-messagepay.thepay.kr:7080/thepay_if/ProcRequest.action'
 
 
