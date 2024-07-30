@@ -5,6 +5,7 @@ WORKDIR /app/
 COPY ./main.py /app/
 COPY ./requirements.txt /app/
 COPY ./success_page.py /app/
+COPY ./payment_model.py /app/
 
 RUN pip install -r requirements.txt
 

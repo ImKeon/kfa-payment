@@ -1,3 +1,4 @@
+import aiohttp
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 import time
@@ -8,6 +9,8 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import urllib.parse
 import json
+
+from payment_model import Payment
 from success_page import HTML_CONTENT
 
 app = FastAPI()
@@ -17,6 +20,8 @@ app = FastAPI()
 RETURN_URL = 'https://payment.kfachallenge.info/pay_return'
 KFA_SERVER_URL = 'https://api.kfachallenge.info/api/v1/purchase/payment-complete'
 THE_PAY_URL = 'https://messagepay.thepay.kr/thepay_if/ProcRequest.action'
+API_KEY = 'da2-cggjypn5wvflfjfaixnbc7vhfy'
+GRAPH_END = 'https://fxzd5ujmmrfhtcpenoanjcaooi.appsync-api.ap-northeast-2.amazonaws.com/graphql'
 
 # <Dev>
 # RETURN_URL = 'https://222.237.25.210:8000/pay_return'
@@ -128,4 +133,45 @@ async def pay_return(request: Request):
 
 @app.get("/pay_return")
 async def pay_return_get(request: Request):
+    return HTMLResponse(content=HTML_CONTENT)
+
+
+@app.post("/amplify-upload")
+async def amplify_upload_post(payment: Payment):
+    query = """
+        mutation createPAYMENT($input: CreatePAYMENTInput!) {
+            createPAYMENT(input: $input) {
+                result_code
+                result_msg
+                result_payno
+                issuenm
+                payment
+                payno
+                status
+                vanuniquekey
+            }
+        }
+        """
+    variables = {
+        "input": payment.dict()
+    }
+    print(payment.dict)
+    headers = {
+        "x-api-key": API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(GRAPH_END, json={"query": query, "variables": variables}, headers=headers) as response:
+            if response.status != 200:
+                raise HTTPException(status_code=response.status, detail=await response.text())
+            result = await response.json()
+            return result
+    return 1
+
+
+@app.post("/in-app/ios")
+async def in_app_test(request: Request):
+    body = await request.body()
+    print(f'Apple In App Purchase {body}')
     return HTMLResponse(content=HTML_CONTENT)
