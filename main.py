@@ -17,6 +17,9 @@ app = FastAPI()
 
 
 # <Prod>
+# FANTASY_RETURN_URL = 'https://payment.kfachallenge.info/fantasy-return'
+# FANTASY_SERVER_URL = 'https://api.kleaguefantasy.com/api/v1/member/point/fantasy'
+
 RETURN_URL = 'https://payment.kfachallenge.info/pay_return'
 KFA_SERVER_URL = 'https://api.kfachallenge.info/api/v1/purchase/payment-complete'
 THE_PAY_URL = 'https://messagepay.thepay.kr/thepay_if/ProcRequest.action'
@@ -24,6 +27,9 @@ API_KEY = 'da2-cggjypn5wvflfjfaixnbc7vhfy'
 GRAPH_END = 'https://fxzd5ujmmrfhtcpenoanjcaooi.appsync-api.ap-northeast-2.amazonaws.com/graphql'
 
 # <Dev>
+FANTASY_RETURN_URL = 'https://payment.kfachallenge.info/fantasy-return'
+FANTASY_SERVER_URL = 'https://api-dev.kleaguefantasy.com/api/v1/member/point/fantasy'
+
 # RETURN_URL = 'https://222.237.25.210:8000/pay_return'
 # KFA_SERVER_URL = 'http://222.237.25.210:8080/api/v1/purchase/payment-complete'
 # THE_PAY_URL='https://dev-messagepay.thepay.kr:7080/thepay_if/ProcRequest.action'
@@ -42,6 +48,49 @@ class PaymentBody(BaseModel):
 async def healthCheck():
     return {"status": 'true'}
 
+
+@app.post("/fantasy")
+async def fantasy(paymentBody: PaymentBody):
+
+    user_id = 'weright'
+    pwd = 'R0eoJqf4HxGN8fqrIEMGUxaSUnHNvI5qLvCmi4sRsm0JjxGJ/uBiwEf5q3n86yY4jPhWx22i21FmMIpBJMA5dQ=='
+    # URL 정의
+    url = THE_PAY_URL
+
+    # Create the XML structure
+    root = Element('root')
+
+    reqhead = SubElement(root, 'reqhead')
+    userinfo = SubElement(reqhead, 'userinfo', userid=f'{user_id}', passwd=f'{pwd}')
+    reqbody = SubElement(root, 'reqbody')
+    request = SubElement(reqbody, 'request', method='pay_request')
+    # get this dat
+    now = datetime.now()
+    # get one month later
+    one_month_later = now + relativedelta(months=1)
+    orderno = str(int(time.time() * 1000))
+    data = SubElement(request, 'data',
+                      orderno=orderno,  # 임의의 랜덤값으로 변경 가능
+                      payusernm=f'{paymentBody.userName}',
+                      usernm=f'{paymentBody.userName}',
+                      paycardarr="",
+                      custid=f'{paymentBody.memberId}',  # 유저 ID
+                      paymethod="0000",  # 결제수단
+                      payhpno="01071035464",  # 고객핸드폰번호
+                      goodsnm=f'{paymentBody.productName}',  # 결제 상품 명
+                      payrequestamt=f'{paymentBody.amount}',  # 결제 요청 금액
+                      payclosedt=f'{one_month_later}',  # 결제 마감 기간
+                      birthdate="1993-07-11",
+                      smssendyn="N",  # 문자(카톡) 발송이 필요할때 "Y"
+                      imsyn="N",  # IMS 링크 사용 여부
+                      payitemnm1="",  # 결제 요청 상세 항목 명칭
+                      payitemamt1="",  # 결제 요청 상세 항목 금액
+                      etcremark="기타사항",
+                      telno="070-753-0103",  # 연락처
+                      mediatype="MC02",  # MC01 -> PC 결제, MC02 -> 스마트폰 결제
+                      returnurl=f'{FANTASY_RETURN_URL}',
+                      # productitems='eyJwcm9kdWN0aXRlbXMiOiBbeyAgICAiY2F0ZWdvcnl0eXBlIjogIkVUQyIsICAgICJjYXRlZ29yeWlkIiA6ICJFVEMiLCAgICAidWlkIiA6ICIxMjM0IiwgICAgIm5hbWUiIDogInRlc3QiLCAgICAicGF5cmVmZXJyZXIiIDogIkVUQyIsICAgICJjb3VudCIgOiAxICB9LCB7ICAgICJjYXRlZ29yeXR5cGUiOiAiRVRDIiwgICAgImNhdGVnb3J5aWQiIDogIkVUQyIsICAgICJ1aWQiIDogIjQ1NjciLCAgICAibmFtZSIgOiAidGVzdDIiLCAgICAicGF5cmVmZXJyZXIiIDogIkVUQyIsICAgICJjb3VudCIgOiAyICB9XX0=',
+                      complexpayyn='Y')
 
 @app.post("/")
 async def root(paymentBody: PaymentBody):
@@ -105,6 +154,31 @@ async def root(paymentBody: PaymentBody):
             "payUrl": f'{payurl}',
             "orderno": f'{orderno}'
         }
+
+
+@app.post("/fantasy-return")
+async def pay_return(request: Request):
+    try:
+        body = await request.body()
+        body_query = body.decode("utf-8")
+        parsed_dict = urllib.parse.parse_qs(body_query)
+        parsed_dict = {k: v[0] for k, v in parsed_dict.items()}
+        json_string = json.dumps(parsed_dict, ensure_ascii=False, indent=4)
+        url = f'{FANTASY_RETURN_URL}'
+        print(f'Server Url : {FANTASY_RETURN_URL} Reqeust Body : {json_string}')
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(url, data=json_string, headers=headers)
+        print(f'Response Is {response.text}')
+        # response_data = response.json()
+        return HTMLResponse(content=HTML_CONTENT)
+    except Exception as e:
+        print(f'Server Error IS {e}')
+        print(f'Server Url : {KFA_SERVER_URL}')
+        body = await request.body()
+        body_query = body.decode("utf-8")
+        print(f'Reqeust Body : {body_query}')
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 
 @app.post("/pay_return")
