@@ -44,16 +44,23 @@ class PaymentBody(BaseModel):
     userName: str
 
 
+class FantasyPaymentBody(BaseModel):
+    memberId: int
+    productName: str
+    amount: int
+    userName: str
+
+
 @app.get("/")
 async def healthCheck():
     return {"status": 'true'}
 
 
 @app.post("/fantasy")
-async def fantasy(paymentBody: PaymentBody):
+async def fantasy(paymentBody: FantasyPaymentBody):
 
     user_id = 'weright'
-    pwd = 'R0eoJqf4HxGN8fqrIEMGUxaSUnHNvI5qLvCmi4sRsm0JjxGJ/uBiwEf5q3n86yY4jPhWx22i21FmMIpBJMA5dQ=='
+    pwd = 'seltuglocehvyu1xu3jta0lzc00yzz09mjaynda3mtewotiznte'
     # URL 정의
     url = THE_PAY_URL
 
