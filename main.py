@@ -157,7 +157,7 @@ async def fantasy(paymentBody: FantasyPaymentBody):
                       payitemamt1="",  # 결제 요청 상세 항목 금액
                       etcremark="기타사항",
                       telno="070-753-0103",  # 연락처
-                      mediatype="MC02",  # MC01 -> PC 결제, MC02 -> 스마트폰 결제
+                      mediatype="MC01",  # MC01 -> PC 결제, MC02 -> 스마트폰 결제
                       returnurl=f'{FANTASY_RETURN_URL}',
                       # productitems='eyJwcm9kdWN0aXRlbXMiOiBbeyAgICAiY2F0ZWdvcnl0eXBlIjogIkVUQyIsICAgICJjYXRlZ29yeWlkIiA6ICJFVEMiLCAgICAidWlkIiA6ICIxMjM0IiwgICAgIm5hbWUiIDogInRlc3QiLCAgICAicGF5cmVmZXJyZXIiIDogIkVUQyIsICAgICJjb3VudCIgOiAxICB9LCB7ICAgICJjYXRlZ29yeXR5cGUiOiAiRVRDIiwgICAgImNhdGVnb3J5aWQiIDogIkVUQyIsICAgICJ1aWQiIDogIjQ1NjciLCAgICAibmFtZSIgOiAidGVzdDIiLCAgICAicGF5cmVmZXJyZXIiIDogIkVUQyIsICAgICJjb3VudCIgOiAyICB9XX0=',
                       complexpayyn='Y')
