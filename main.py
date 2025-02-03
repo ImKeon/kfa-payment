@@ -121,7 +121,6 @@ async def root(paymentBody: PaymentBody):
 
 @app.post("/fantasy")
 async def fantasy(paymentBody: FantasyPaymentBody):
-    print("Hello World")
     user_id = 'weright'
     pwd = 'seltuglocehvyu1xu3jta0lzc00yzz09mjaynda3mtewotiznte'
     # URL 정의
