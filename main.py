@@ -144,7 +144,7 @@ async def fantasy(paymentBody: FantasyPaymentBody):
                       usernm=f'{paymentBody.userName}',
                       paycardarr="",
                       custid=f'{paymentBody.memberId}',  # 유저 ID
-                      paymethod="0000",  # 결제수단
+                      paymethod="0019",  # 결제수단
                       payhpno="01071035464",  # 고객핸드폰번호
                       goodsnm=f'{paymentBody.productName}',  # 결제 상품 명
                       payrequestamt=f'{paymentBody.amount}',  # 결제 요청 금액
