@@ -217,7 +217,7 @@ async def fantasy(paymentBody: FantasyPaymentBody):
         }
 
 @app.post("/fantasy-return")
-async def pay_return(request: Request):
+async def fantasy_pay_return(request: Request):
     try:
         body = await request.body()
         body_query = body.decode("utf-8")
@@ -314,14 +314,20 @@ async def in_app_test(request: Request):
 @app.post("/pay-call-back")
 async def pay_call_back(request: Request):
     body = await request.body()
+    print(f"body {body}")
 
     try:
         # XML 파싱
         root = fromstring(body)
+        print(f"root {root}")
+
         data = {child.tag: child.text for child in root}
+        print(f"Data {data}")
 
         # PayData 객체 생성
         pay_data = PayData(**data)
+
+        print(f"pay Data {pay_data}")
 
         # JSON 데이터로 변환
         json_data = pay_data.model_dump()
