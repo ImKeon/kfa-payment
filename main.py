@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 import time
 import requests
-from xml.etree.ElementTree import Element, tostring, SubElement, fromstring
+from xml.etree.ElementTree import Element, tostring, SubElement, fromstring, ElementTree
 from pydantic import BaseModel
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -22,6 +22,7 @@ app = FastAPI()
 
 RETURN_URL = 'https://payment.kfachallenge.info/pay_return'
 KFA_SERVER_URL = 'https://api.kfachallenge.info/api/v1/purchase/payment-complete'
+KFA_SERVER_URL_V2 = 'https://api.kfachallenge.info/api/v1/purchase/payment-complete-v2'
 THE_PAY_URL = 'https://messagepay.thepay.kr/thepay_if/ProcRequest.action'
 API_KEY = 'da2-cggjypn5wvflfjfaixnbc7vhfy'
 GRAPH_END = 'https://fxzd5ujmmrfhtcpenoanjcaooi.appsync-api.ap-northeast-2.amazonaws.com/graphql'
@@ -50,6 +51,37 @@ class FantasyPaymentBody(BaseModel):
     amount: int
     userName: str
 
+
+class PayData(BaseModel):
+    userid: str
+    passwd: str
+    payno: str
+    orderno: str
+    seq: str
+    respcd: str
+    resptext: str
+    paymethod: str
+    paytype: str
+    custmessage: str
+    cardcd: str
+    cardnm: str
+    payrequestamt: str
+    payamt: str
+    status: str
+    approvaltype: str
+    approvaldt: str
+    approvalno: str
+    canceldt: str
+    installmonth: str
+    vanuniquekey: str
+    cardbintype01: str
+    cardbintype02: str
+    partcancyn: str
+    useretc1: str
+    useretc2: str
+    useretc3: str
+    outerkey1: str
+    outerkey2: str
 
 @app.get("/")
 async def healthCheck():
@@ -277,3 +309,29 @@ async def in_app_test(request: Request):
     body = await request.body()
     print(f'Apple In App Purchase {body}')
     return HTMLResponse(content=HTML_CONTENT)
+
+
+@app.post("/pay-call-back")
+async def pay_call_back(request: Request):
+    body = await request.body()
+
+    try:
+        # XML 파싱
+        root = fromstring(body)
+        data = {child.tag: child.text for child in root}
+
+        # PayData 객체 생성
+        pay_data = PayData(**data)
+
+        # JSON 데이터로 변환
+        json_data = pay_data.model_dump()
+
+        print(f"Test json Data {json_data}")
+
+        # 다른 서버로 POST 요청 전송 (requests 사용)
+        response = requests.post(f'{KFA_SERVER_URL_V2}', json=json_data)
+        # 응답 반환
+        return {"status": "success", "response": response.json()}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
