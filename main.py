@@ -317,7 +317,7 @@ async def pay_call_back(reqxml: str = Form(...)):
 
     try:
         # XML 파싱
-        root = ET.fromstring(reqxml)
+        root = fromstring(reqxml)
         print(f"Root: {root}")
 
         # XML 데이터 파싱
