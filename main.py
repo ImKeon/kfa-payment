@@ -1,5 +1,5 @@
 import aiohttp
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Form
 from fastapi.responses import HTMLResponse
 import time
 import requests
@@ -312,30 +312,33 @@ async def in_app_test(request: Request):
 
 
 @app.post("/pay-call-back")
-async def pay_call_back(request: Request):
-    body = await request.body()
-    print(f"body {body}")
+async def pay_call_back(reqxml: str = Form(...)):
+
 
     try:
         # XML 파싱
-        root = fromstring(body)
-        print(f"root {root}")
+        root = ET.fromstring(reqxml)
+        print(f"Root: {root}")
 
-        data = {child.tag: child.text for child in root}
-        print(f"Data {data}")
+        # XML 데이터 파싱
+        data_node = root.find(".//data")  # data 태그를 찾아 처리
+        data = {child.attrib['name']: child.attrib['value'] for child in data_node}
+
+        print(f"Parsed Data: {data}")
 
         # PayData 객체 생성
         pay_data = PayData(**data)
 
-        print(f"pay Data {pay_data}")
+        print(f"PayData Object: {pay_data}")
 
         # JSON 데이터로 변환
         json_data = pay_data.model_dump()
 
-        print(f"Test json Data {json_data}")
+        print(f"JSON Data: {json_data}")
 
-        # 다른 서버로 POST 요청 전송 (requests 사용)
-        response = requests.post(f'{KFA_SERVER_URL_V2}', json=json_data)
+        # 다른 서버로 POST 요청 전송
+        response = requests.post(f"{KFA_SERVER_URL_V2}", json=json_data)
+
         # 응답 반환
         return {"status": "success", "response": response.json()}
 
