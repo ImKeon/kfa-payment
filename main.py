@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request, HTTPException, Form
 from fastapi.responses import HTMLResponse
 import time
 import requests
-from xml.etree.ElementTree import Element, tostring, SubElement, fromstring, ElementTree
+from xml.etree.ElementTree import Element, tostring, SubElement, fromstring, ElementTree, ParseError
 from pydantic import BaseModel
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -51,37 +51,6 @@ class FantasyPaymentBody(BaseModel):
     amount: int
     userName: str
 
-
-class PayData(BaseModel):
-    userid: str
-    passwd: str
-    payno: str
-    orderno: str
-    seq: str
-    respcd: str
-    resptext: str
-    paymethod: str
-    paytype: str
-    custmessage: str
-    cardcd: str
-    cardnm: str
-    payrequestamt: str
-    payamt: str
-    status: str
-    approvaltype: str
-    approvaldt: str
-    approvalno: str
-    canceldt: str
-    installmonth: str
-    vanuniquekey: str
-    cardbintype01: str
-    cardbintype02: str
-    partcancyn: str
-    useretc1: str
-    useretc2: str
-    useretc3: str
-    outerkey1: str
-    outerkey2: str
 
 @app.get("/")
 async def healthCheck():
@@ -313,28 +282,36 @@ async def in_app_test(request: Request):
 
 @app.post("/pay-call-back")
 async def pay_call_back(reqxml: str = Form(...)):
-
-
     try:
         # XML 파싱
         root = fromstring(reqxml)
-        print(f"Root: {root}")
 
-        # XML 데이터 파싱
-        data_node = root.find(".//data")  # data 태그를 찾아 처리
-        data = {child.attrib['name']: child.attrib['value'] for child in data_node}
+        # <userinfo> 태그에서 userid, passwd 가져오기
+        user_info = root.find(".//userinfo")
+        if user_info is None:
+            return {"status": "error", "message": "No 'userinfo' tag found in XML"}
 
-        print(f"Parsed Data: {data}")
+        user_data = user_info.attrib  # {'userid': 'weright', 'passwd': 'seltuglocehvyu...'}
+
+        # <data> 태그에서 결제 정보 가져오기
+        data_node = root.find(".//data")
+        if data_node is None:
+            return {"status": "error", "message": "No 'data' tag found in XML"}
+
+        data_dict = data_node.attrib  # 결제 관련 정보
+
+        # partcanc_yn 필드를 Pydantic 모델의 partcancyn으로 변환
+        if "partcanc_yn" in data_dict:
+            data_dict["partcancyn"] = data_dict.pop("partcanc_yn")  # 필드명 변경
+
+        # user_data와 data_dict 합치기
+        data_dict.update(user_data)  # userid, passwd 추가
 
         # PayData 객체 생성
-        pay_data = PayData(**data)
-
-        print(f"PayData Object: {pay_data}")
+        pay_data = PayData(**data_dict)
 
         # JSON 데이터로 변환
         json_data = pay_data.model_dump()
-
-        print(f"JSON Data: {json_data}")
 
         # 다른 서버로 POST 요청 전송
         response = requests.post(f"{KFA_SERVER_URL_V2}", json=json_data)
@@ -342,5 +319,45 @@ async def pay_call_back(reqxml: str = Form(...)):
         # 응답 반환
         return {"status": "success", "response": response.json()}
 
+    except ParseError as parse_error:
+        return {"status": "error", "message": f"XML parsing error: {str(parse_error)}"}
+
+    except requests.RequestException as request_error:
+        return {"status": "error", "message": f"Request error: {str(request_error)}"}
+
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": f"Unexpected error: {str(e)}"}
+
+
+# Pydantic 데이터 모델
+class PayData(BaseModel):
+    userid: str
+    passwd: str
+    payno: str
+    orderno: str
+    seq: str
+    respcd: str
+    resptext: str
+    paymethod: str
+    paytype: str
+    custmessage: str
+    cardcd: str
+    cardnm: str
+    payrequestamt: str
+    payamt: str
+    status: str
+    approvaltype: str
+    approvaldt: str
+    approvalno: str
+    canceldt: str
+    installmonth: str
+    vanuniquekey: str
+    cardbintype01: str
+    cardbintype02: str
+    partcancyn: str  # 기존 partcanc_yn 필드를 매핑하여 수정
+    useretc1: str
+    useretc2: str
+    useretc3: str
+    outerkey1: str
+    outerkey2: str
+
