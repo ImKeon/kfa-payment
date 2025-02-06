@@ -283,6 +283,7 @@ async def in_app_test(request: Request):
 @app.post("/pay-call-back")
 async def pay_call_back(reqxml: str = Form(...)):
     try:
+        reqxml = reqxml.encode("latin1").decode("utf-8")
         # XML 파싱
         root = fromstring(reqxml)
 
