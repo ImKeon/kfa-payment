@@ -74,7 +74,7 @@ async def root(paymentBody: PaymentBody):
     one_month_later = now + relativedelta(months=1)
     orderno = str(int(time.time() * 1000))
     data = SubElement(request, 'data',
-                      orderno=orderno,  # 임의의 랜덤값으로 변경 가능
+                      orderno=f'kfa-{orderno}',  # 임의의 랜덤값으로 변경 가능
                       payusernm=f'{paymentBody.userName}',
                       usernm=f'{paymentBody.userName}',
                       paycardarr="",
@@ -92,7 +92,7 @@ async def root(paymentBody: PaymentBody):
                       etcremark="기타사항",
                       telno="070-753-0103",  # 연락처
                       mediatype="MC02",  # MC01 -> PC 결제, MC02 -> 스마트폰 결제
-                      returnurl=f'{RETURN_URL}',
+                      # returnurl=f'{RETURN_URL}',
                       # productitems='eyJwcm9kdWN0aXRlbXMiOiBbeyAgICAiY2F0ZWdvcnl0eXBlIjogIkVUQyIsICAgICJjYXRlZ29yeWlkIiA6ICJFVEMiLCAgICAidWlkIiA6ICIxMjM0IiwgICAgIm5hbWUiIDogInRlc3QiLCAgICAicGF5cmVmZXJyZXIiIDogIkVUQyIsICAgICJjb3VudCIgOiAxICB9LCB7ICAgICJjYXRlZ29yeXR5cGUiOiAiRVRDIiwgICAgImNhdGVnb3J5aWQiIDogIkVUQyIsICAgICJ1aWQiIDogIjQ1NjciLCAgICAibmFtZSIgOiAidGVzdDIiLCAgICAicGF5cmVmZXJyZXIiIDogIkVUQyIsICAgICJjb3VudCIgOiAyICB9XX0=',
                       complexpayyn='Y')
 
@@ -116,12 +116,25 @@ async def root(paymentBody: PaymentBody):
 
         return {
             "payUrl": f'{payurl}',
-            "orderno": f'{orderno}'
+            "orderno": f'kfa-{orderno}'
         }
 
 
-@app.post("/fantasy")
-async def fantasy(paymentBody: FantasyPaymentBody):
+@app.post("/fantasy/{device_type}")
+async def fantasy(device_type: str, paymentBody: FantasyPaymentBody):
+    device_type = device_type.lower()
+    paymethod = "0000"
+    mediatype = "MC02"
+    if device_type == "mobile":
+        paymethod = "0000"
+        mediatype = "MC02"
+    elif device_type == "pc":
+        paymethod = "0019"
+        mediatype = "MC01"
+    else:
+        paymethod = "0000"
+
+
     user_id = '7788701253@288'
     pwd = '7110eda4d09e062aa5e4a390b0a572ac0d2c0220'
     # URL 정의
@@ -140,12 +153,12 @@ async def fantasy(paymentBody: FantasyPaymentBody):
     one_month_later = now + relativedelta(months=1)
     orderno = str(int(time.time() * 1000))
     data = SubElement(request, 'data',
-                      orderno=orderno,  # 임의의 랜덤값으로 변경 가능
+                      orderno=f'fantasy-{orderno}',  # 임의의 랜덤값으로 변경 가능
                       payusernm=f'{paymentBody.userName}',
                       usernm=f'{paymentBody.userName}',
                       paycardarr="",
                       custid=f'{paymentBody.memberId}',  # 유저 ID
-                      paymethod="0019",  # 결제수단
+                      paymethod=paymethod,  # 결제수단
                       payhpno="01071035464",  # 고객핸드폰번호
                       goodsnm=f'{paymentBody.productName}',  # 결제 상품 명
                       payrequestamt=f'{paymentBody.amount}',  # 결제 요청 금액
@@ -157,8 +170,8 @@ async def fantasy(paymentBody: FantasyPaymentBody):
                       payitemamt1="",  # 결제 요청 상세 항목 금액
                       etcremark="기타사항",
                       telno="070-753-0103",  # 연락처
-                      mediatype="MC01",  # MC01 -> PC 결제, MC02 -> 스마트폰 결제
-                      returnurl=f'{FANTASY_RETURN_URL}',
+                      mediatype=mediatype,  # MC01 -> PC 결제, MC02 -> 스마트폰 결제
+                      # returnurl=f'{FANTASY_RETURN_URL}',
                       # productitems='eyJwcm9kdWN0aXRlbXMiOiBbeyAgICAiY2F0ZWdvcnl0eXBlIjogIkVUQyIsICAgICJjYXRlZ29yeWlkIiA6ICJFVEMiLCAgICAidWlkIiA6ICIxMjM0IiwgICAgIm5hbWUiIDogInRlc3QiLCAgICAicGF5cmVmZXJyZXIiIDogIkVUQyIsICAgICJjb3VudCIgOiAxICB9LCB7ICAgICJjYXRlZ29yeXR5cGUiOiAiRVRDIiwgICAgImNhdGVnb3J5aWQiIDogIkVUQyIsICAgICJ1aWQiIDogIjQ1NjciLCAgICAibmFtZSIgOiAidGVzdDIiLCAgICAicGF5cmVmZXJyZXIiIDogIkVUQyIsICAgICJjb3VudCIgOiAyICB9XX0=',
                       complexpayyn='Y')
 
@@ -182,7 +195,7 @@ async def fantasy(paymentBody: FantasyPaymentBody):
 
         return {
             "payUrl": f'{payurl}',
-            "orderno": f'{orderno}'
+            "orderno": f'fantasy-{orderno}'
         }
 
 @app.post("/fantasy-return")
@@ -286,39 +299,35 @@ async def pay_call_back(reqxml: str = Form(...)):
         reqxml = reqxml.encode("latin1").decode("utf-8")
         # XML 파싱
         root = fromstring(reqxml)
-
         # <userinfo> 태그에서 userid, passwd 가져오기
         user_info = root.find(".//userinfo")
         if user_info is None:
             return {"status": "error", "message": "No 'userinfo' tag found in XML"}
-
         user_data = user_info.attrib  # {'userid': 'weright', 'passwd': 'seltuglocehvyu...'}
-
         # <data> 태그에서 결제 정보 가져오기
         data_node = root.find(".//data")
         if data_node is None:
             return {"status": "error", "message": "No 'data' tag found in XML"}
-
         data_dict = data_node.attrib  # 결제 관련 정보
-
         # partcanc_yn 필드를 Pydantic 모델의 partcancyn으로 변환
         if "partcanc_yn" in data_dict:
             data_dict["partcancyn"] = data_dict.pop("partcanc_yn")  # 필드명 변경
-
         # user_data와 data_dict 합치기
         data_dict.update(user_data)  # userid, passwd 추가
-
         # PayData 객체 생성
         pay_data = PayData(**data_dict)
-
         # JSON 데이터로 변환
         json_data = pay_data.model_dump()
-
-        # 다른 서버로 POST 요청 전송
-        response = requests.post(f"{KFA_SERVER_URL_V2}", json=json_data)
-
-        # 응답 반환
-        return {"status": "success", "response": response.json()}
+        if "fantasy" in pay_data.orderno:
+            # 다른 서버로 POST 요청 전송
+            response = requests.post(f"{FANTASY_SERVER_URL}", json=json_data)
+            # 응답 반환
+            return {"status": "success", "response": response.json()}
+        else:
+            # 다른 서버로 POST 요청 전송
+            response = requests.post(f"{KFA_SERVER_URL_V2}", json=json_data)
+            # 응답 반환
+            return {"status": "success", "response": response.json()}
 
     except ParseError as parse_error:
         return {"status": "error", "message": f"XML parsing error: {str(parse_error)}"}
