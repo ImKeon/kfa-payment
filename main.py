@@ -13,6 +13,9 @@ import json
 from payment_model import Payment
 from success_page import HTML_CONTENT
 
+import aiomysql
+import asyncio
+
 app = FastAPI()
 
 
@@ -35,6 +38,26 @@ FANTASY_SERVER_URL = 'https://api-v2.kleaguefantasy.com/api/v1/member/point/fant
 # RETURN_URL = 'https://222.237.25.210:8000/pay_return'
 # KFA_SERVER_URL = 'http://222.237.25.210:8080/api/v1/purchase/payment-complete'
 # THE_PAY_URL='https://dev-messagepay.thepay.kr:7080/thepay_if/ProcRequest.action'
+
+
+DB_CONFIG = {
+    "host": "with-common.cz4y4tgkfy2i.ap-northeast-2.rds.amazonaws.com",
+    "user": "admin",
+    "password": "dnlemdlfqks!",
+    "db": "with-payment",
+    "port": 3306
+}
+
+
+async def get_db_connection():
+    return await aiomysql.connect(
+        host=DB_CONFIG["host"],
+        user=DB_CONFIG["user"],
+        password=DB_CONFIG["password"],
+        db=DB_CONFIG["db"],
+        port=DB_CONFIG["port"],
+        autocommit=True
+    )
 
 
 class PaymentBody(BaseModel):
@@ -376,7 +399,7 @@ async def in_app_test(request: Request):
 @app.post("/pay-call-back")
 async def pay_call_back(reqxml: str = Form(...)):
     try:
-        reqxml = reqxml.encode("latin1").decode("utf-8")
+        reqxml = reqxml.encode("utf-8").decode("utf-8")
         # XML 파싱
         root = fromstring(reqxml)
         # <userinfo> 태그에서 userid, passwd 가져오기
@@ -384,11 +407,26 @@ async def pay_call_back(reqxml: str = Form(...)):
         if user_info is None:
             return {"status": "error", "message": "No 'userinfo' tag found in XML"}
         user_data = user_info.attrib
+
         # <data> 태그에서 결제 정보 가져오기
         data_node = root.find(".//data")
         if data_node is None:
             return {"status": "error", "message": "No 'data' tag found in XML"}
         data_dict = data_node.attrib  # 결제 관련 정보
+
+        # Orderno 저장
+        orderno = data_node.attrib.get("orderno")
+        if not orderno:
+            return {"status": "error", "message": "No orderno found in XML"}
+
+        # MySQL 연결
+        conn = await get_db_connection()
+        async with conn.cursor() as cur:
+            await cur.execute("""
+                INSERT INTO payments_log (orderno, request_time, processed) 
+                VALUES (%s, NOW(), FALSE);
+            """, (orderno,))
+
         # partcanc_yn 필드를 Pydantic 모델의 partcancyn으로 변환
         if "partcanc_yn" in data_dict:
             data_dict["partcancyn"] = data_dict.pop("partcanc_yn")  # 필드명 변경
@@ -400,12 +438,24 @@ async def pay_call_back(reqxml: str = Form(...)):
         json_data = pay_data.model_dump()
         if "fantasy" in pay_data.orderno:
             response = requests.post(f"{FANTASY_SERVER_URL}", json=json_data)
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    UPDATE payments_log SET processed = TRUE WHERE orderno = %s
+                """, (orderno,))
             return {"status": "success", "response": response.json()}
         elif "t-f" in pay_data.orderno:
             response = requests.post(f"{FANTASY_SERVER_URL_T}", json=json_data)
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    UPDATE payments_log SET processed = TRUE WHERE orderno = %s
+                """, (orderno,))
             return {"status": "success", "response": response.json()}
         else:
             response = requests.post(f"{KFA_SERVER_URL_V2}", json=json_data)
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    UPDATE payments_log SET processed = TRUE WHERE orderno = %s
+                """, (orderno,))
             return {"status": "success", "response": response.json()}
 
     except ParseError as parse_error:
