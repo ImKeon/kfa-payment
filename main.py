@@ -9,6 +9,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import urllib.parse
 import json
+import logging
 
 from payment_model import Payment
 from success_page import HTML_CONTENT
@@ -397,83 +398,92 @@ async def in_app_test(request: Request):
 
 
 @app.post("/pay-call-back")
-async def pay_call_back(reqxml: str = Body(..., media_type="application/xml")):
-    print('pay_call_back start')
+async def pay_call_back(reqxml: str = Form(...)):
+    logging.info("💰 pay_call_back start")
+
     try:
-        reqxml = reqxml.encode("utf-8").decode("utf-8")
+        # URL 디코딩 (만약 URL 인코딩된 XML이 들어오면 디코딩 처리)
+        decoded_xml = urllib.parse.unquote(reqxml)
+        logging.info(f"📩 Received Encoded XML: {reqxml}")
+        logging.info(f"📩 Decoded XML: {decoded_xml}")
+
         # XML 파싱
-        root = fromstring(reqxml)
+        root = fromstring(decoded_xml)
+
         # <userinfo> 태그에서 userid, passwd 가져오기
         user_info = root.find(".//userinfo")
         if user_info is None:
-            print('"status": "error", "message": "No userinfo tag found in XML"')
+            logging.error("🚨 No 'userinfo' tag found in XML")
             return {"status": "error", "message": "No 'userinfo' tag found in XML"}
         user_data = user_info.attrib
 
-        # <data> 태그에서 결제 정보 가져오기
-        data_node = root.find(".//data")
-        if data_node is None:
-            print('"status": "error", "message": "No data tag found in XML"')
+        # <data> 태그에서 결제 정보 가져오기 (여러 개의 <data> 태그 지원)
+        data_nodes = root.findall(".//data")
+        if not data_nodes:
+            logging.error("🚨 No 'data' tag found in XML")
             return {"status": "error", "message": "No 'data' tag found in XML"}
-        data_dict = data_node.attrib  # 결제 관련 정보
 
-        # Orderno 저장
-        orderno = data_node.attrib.get("orderno")
-        if not orderno:
-            print('"status": "error", "message": "No orderno found in XML"')
-            return {"status": "error", "message": "No orderno found in XML"}
-
-        # MySQL 연결
         conn = await get_db_connection()
-        async with conn.cursor() as cur:
-            await cur.execute("""
-                INSERT INTO payments_log (orderno, request_time, processed) 
-                VALUES (%s, NOW(), FALSE);
-            """, (orderno,))
 
-        # partcanc_yn 필드를 Pydantic 모델의 partcancyn으로 변환
-        if "partcanc_yn" in data_dict:
-            data_dict["partcancyn"] = data_dict.pop("partcanc_yn")  # 필드명 변경
-        # user_data와 data_dict 합치기
-        data_dict.update(user_data)  # userid, passwd 추가
-        # PayData 객체 생성
-        pay_data = PayData(**data_dict)
-        # JSON 데이터로 변환
-        json_data = pay_data.model_dump()
-        if "fantasy" in pay_data.orderno:
-            print("Fantasy Call Back Success")
-            response = requests.post(f"{FANTASY_SERVER_URL}", json=json_data)
-            print(f'Fantasy Call Back Response Is {response}')
+        results = []
+        for data_node in data_nodes:
+            orderno = data_node.attrib.get("orderno")
+            if not orderno:
+                logging.warning("⚠️ No orderno found in XML, skipping...")
+                continue  # orderno 없는 경우 무시
+
+            # MySQL에 요청 기록 저장
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    UPDATE payments_log SET processed = TRUE WHERE orderno = %s
-                """, (orderno,))
-            return {"status": "success", "response": response.json()}
-        elif "t-f" in pay_data.orderno:
-            response = requests.post(f"{FANTASY_SERVER_URL_T}", json=json_data)
+                        INSERT INTO payments_log (orderno, request_time, processed) 
+                        VALUES (%s, NOW(), FALSE);
+                    """, (orderno,))
+
+            # 데이터 변환 및 API 요청
+            data_dict = data_node.attrib
+            data_dict.update(user_data)  # userid, passwd 추가
+
+            if "partcanc_yn" in data_dict:
+                data_dict["partcancyn"] = data_dict.pop("partcanc_yn")  # 필드명 변경
+
+            # JSON 변환
+            pay_data = PayData(**data_dict)
+            json_data = pay_data.model_dump()
+
+            # API 요청 보내기
+            if "fantasy" in pay_data.orderno:
+                logging.info(f"🏆 Sending Fantasy API request for order: {orderno}")
+                response = requests.post(FANTASY_SERVER_URL, json=json_data)
+            elif "t-f" in pay_data.orderno:
+                logging.info(f"📢 Sending Fantasy Test API request for order: {orderno}")
+                response = requests.post(FANTASY_SERVER_URL_T, json=json_data)
+            else:
+                logging.info(f"⚽ Sending KFA API request for order: {orderno}")
+                response = requests.post(KFA_SERVER_URL_V2, json=json_data)
+
+            logging.info(f"✅ API Response for order {orderno}: {response.text}")
+
+            # 요청이 성공하면 processed 상태 업데이트
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    UPDATE payments_log SET processed = TRUE WHERE orderno = %s
-                """, (orderno,))
-            return {"status": "success", "response": response.json()}
-        else:
-            response = requests.post(f"{KFA_SERVER_URL_V2}", json=json_data)
-            async with conn.cursor() as cur:
-                await cur.execute("""
-                    UPDATE payments_log SET processed = TRUE WHERE orderno = %s
-                """, (orderno,))
-            return {"status": "success", "response": response.json()}
+                        UPDATE payments_log SET processed = TRUE WHERE orderno = %s
+                    """, (orderno,))
+
+            results.append({"orderno": orderno, "response": response.json()})
+
+        await conn.ensure_closed()
+        return {"status": "success", "processed_orders": results}
 
     except ParseError as parse_error:
-        print(f'status": "error", "message": "XML parsing error: {str(parse_error)}')
+        logging.error(f"🚨 XML parsing error: {str(parse_error)}")
         return {"status": "error", "message": f"XML parsing error: {str(parse_error)}"}
 
     except requests.RequestException as request_error:
-        print(f'status": "error", "message": f"Request error: {str(request_error)}')
+        logging.error(f"🚨 Request error: {str(request_error)}")
         return {"status": "error", "message": f"Request error: {str(request_error)}"}
 
     except Exception as e:
-        print(f'status": "error", "message": f"Unexpected error: {str(e)}')
+        logging.error(f"🚨 Unexpected error: {str(e)}")
         return {"status": "error", "message": f"Unexpected error: {str(e)}"}
 
 
