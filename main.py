@@ -398,6 +398,7 @@ async def in_app_test(request: Request):
 
 @app.post("/pay-call-back")
 async def pay_call_back(reqxml: str = Body(..., media_type="application/xml")):
+    print('pay_call_back start')
     try:
         reqxml = reqxml.encode("utf-8").decode("utf-8")
         # XML 파싱
@@ -405,18 +406,21 @@ async def pay_call_back(reqxml: str = Body(..., media_type="application/xml")):
         # <userinfo> 태그에서 userid, passwd 가져오기
         user_info = root.find(".//userinfo")
         if user_info is None:
+            print('"status": "error", "message": "No userinfo tag found in XML"')
             return {"status": "error", "message": "No 'userinfo' tag found in XML"}
         user_data = user_info.attrib
 
         # <data> 태그에서 결제 정보 가져오기
         data_node = root.find(".//data")
         if data_node is None:
+            print('"status": "error", "message": "No data tag found in XML"')
             return {"status": "error", "message": "No 'data' tag found in XML"}
         data_dict = data_node.attrib  # 결제 관련 정보
 
         # Orderno 저장
         orderno = data_node.attrib.get("orderno")
         if not orderno:
+            print('"status": "error", "message": "No orderno found in XML"')
             return {"status": "error", "message": "No orderno found in XML"}
 
         # MySQL 연결
@@ -439,7 +443,7 @@ async def pay_call_back(reqxml: str = Body(..., media_type="application/xml")):
         if "fantasy" in pay_data.orderno:
             print("Fantasy Call Back Success")
             response = requests.post(f"{FANTASY_SERVER_URL}", json=json_data)
-            print(f'Fantasy Call Back REsponse Is {response}')
+            print(f'Fantasy Call Back Response Is {response}')
             async with conn.cursor() as cur:
                 await cur.execute("""
                     UPDATE payments_log SET processed = TRUE WHERE orderno = %s
