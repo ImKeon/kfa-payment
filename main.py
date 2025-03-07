@@ -465,12 +465,15 @@ async def pay_call_back(reqxml: str = Body(..., media_type="application/xml")):
             return {"status": "success", "response": response.json()}
 
     except ParseError as parse_error:
+        print(f'status": "error", "message": "XML parsing error: {str(parse_error)}')
         return {"status": "error", "message": f"XML parsing error: {str(parse_error)}"}
 
     except requests.RequestException as request_error:
+        print(f'status": "error", "message": f"Request error: {str(request_error)}')
         return {"status": "error", "message": f"Request error: {str(request_error)}"}
 
     except Exception as e:
+        print(f'status": "error", "message": f"Unexpected error: {str(e)}')
         return {"status": "error", "message": f"Unexpected error: {str(e)}"}
 
 
