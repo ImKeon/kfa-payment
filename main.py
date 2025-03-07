@@ -437,7 +437,9 @@ async def pay_call_back(reqxml: str = Body(..., media_type="application/xml")):
         # JSON 데이터로 변환
         json_data = pay_data.model_dump()
         if "fantasy" in pay_data.orderno:
+            print("Fantasy Call Back Success")
             response = requests.post(f"{FANTASY_SERVER_URL}", json=json_data)
+            print(f'Fantasy Call Back REsponse Is {response}')
             async with conn.cursor() as cur:
                 await cur.execute("""
                     UPDATE payments_log SET processed = TRUE WHERE orderno = %s
