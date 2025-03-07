@@ -1,5 +1,5 @@
 import aiohttp
-from fastapi import FastAPI, Request, HTTPException, Form
+from fastapi import FastAPI, Request, HTTPException, Body, Form
 from fastapi.responses import HTMLResponse
 import time
 import requests
@@ -397,7 +397,7 @@ async def in_app_test(request: Request):
 
 
 @app.post("/pay-call-back")
-async def pay_call_back(reqxml: str = Form(...)):
+async def pay_call_back(reqxml: str = Body(..., media_type="application/xml")):
     try:
         reqxml = reqxml.encode("utf-8").decode("utf-8")
         # XML 파싱
