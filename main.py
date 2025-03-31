@@ -407,7 +407,8 @@ async def pay_call_back(reqxml: str = Form(...)):
         try:
             decoded_xml = decoded_xml.encode("latin1").decode("utf-8")
             logging.info("✅ Latin-1 → UTF-8 변환 성공")
-        # except (UnicodeEncodeError, UnicodeDecodeError):
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            decoded_xml = urllib.parse.unquote(reqxml)
         except:
             logging.warning("⚠️ UTF-8 변환 실패: 원본 데이터를 그대로 사용")
         logging.info(f"📩 Received Encoded XML: {reqxml}")
@@ -441,7 +442,7 @@ async def pay_call_back(reqxml: str = Form(...)):
             # MySQL에 요청 기록 저장
             async with conn.cursor() as cur:
                 await cur.execute("""
-                        INSERT INTO payments_log (orderno, request_time, processed) 
+                        INSERT INTO payments_log (orderno, request_time, processed)
                         VALUES (%s, NOW(), FALSE);
                     """, (orderno,))
 
